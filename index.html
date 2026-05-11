@@ -136,7 +136,7 @@
             background-color: var(--error);
             border: 2px solid var(--primary-bg);
             border-radius: 50%;
-            display: none; /* Скрыт по умолчанию */
+            display: none; 
             z-index: 5;
         }
 
@@ -282,11 +282,12 @@
             justify-content: center;
             align-items: flex-start;
             backdrop-filter: blur(2px);
-            padding: 0 12px;
+            padding: 12px;
             box-sizing: border-box;
-            overflow-y: auto;
+            overflow-y: hidden; /* Чат сам будет скроллиться */
         }
 
+        /* Общая структура модалок */
         .modal-content {
             background: white;
             border: 1px solid var(--dark-ui);
@@ -298,7 +299,16 @@
             box-sizing: border-box;
             position: relative;
             margin-top: 60px;
-            margin-bottom: 20px;
+        }
+
+        /* Специфические стили для модалки чата (Full-ish screen) */
+        .modal-content.full-chat {
+            max-width: none;
+            margin-top: 0;
+            height: calc(100% - 24px); /* Отступы по 12px сверху и снизу */
+            display: flex;
+            flex-direction: column;
+            top: 12px;
         }
 
         .modal-content.root-mini {
@@ -311,9 +321,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             color: var(--dark-ui);
             gap: 15px;
+            flex-shrink: 0;
         }
 
         .modal-title {
@@ -335,16 +346,17 @@
         }
 
         #chatMessages {
-            height: 300px;
+            flex-grow: 1;
             overflow-y: auto;
             border: 1px solid #ddd;
             border-radius: 8px;
             padding: 10px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             display: flex;
             flex-direction: column;
             gap: 8px;
             background: #fafafa;
+            -webkit-overflow-scrolling: touch;
         }
 
         .chat-msg {
@@ -398,6 +410,8 @@
         .chat-input-area {
             display: flex;
             gap: 8px;
+            flex-shrink: 0;
+            padding-bottom: 4px;
         }
 
         .clear-chat-btn {
@@ -616,7 +630,7 @@
 
     <!-- МОДАЛКА ЧАТА -->
     <div class="modal-overlay" id="chatModal">
-        <div class="modal-content">
+        <div class="modal-content full-chat">
             <div class="modal-header">
                 <span class="modal-title">Чат</span>
                 <button id="clearChatBtn" class="clear-chat-btn">Очистить</button>
@@ -634,7 +648,7 @@
         </div>
     </div>
 
-    <!-- Остальные модалки без изменений... -->
+    <!-- Остальные модалки -->
     <div class="modal-overlay" id="calendarModal">
         <div class="modal-content" id="swipeArea" style="touch-action: none;">
             <div class="modal-header">
@@ -718,7 +732,7 @@
                 <button class="close-modal" onclick="closeAllModals()">&times;</button>
             </div>
             <div id="infoDetailsContainer">
-                <!-- Сюда вставляются детали динамически -->
+                <!-- Детали -->
             </div>
         </div>
     </div>
@@ -905,7 +919,6 @@
                 snapshot.forEach(doc => msgs.push({id: doc.id, ...doc.data()}));
                 msgs.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
                 
-                // Проверка непрочитанных
                 if (!isChatOpen && msgs.length > 0) {
                     const lastReadTime = localStorage.getItem('chat_last_read') || 0;
                     const lastMsgTime = msgs[msgs.length - 1].timestamp?.seconds || 0;
@@ -972,7 +985,6 @@
         document.getElementById('openChatBtn').onclick = () => {
             isChatOpen = true;
             chatNotification.style.display = 'none';
-            // Сохраняем время прочтения (секунды)
             localStorage.setItem('chat_last_read', Math.floor(Date.now() / 1000));
             
             document.getElementById('chatModal').style.display = 'flex';
