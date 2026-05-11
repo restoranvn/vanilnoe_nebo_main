@@ -337,19 +337,19 @@
             font-size: 14px;
             line-height: 1.4;
             position: relative;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #1F1713;
+            border: 1px solid rgba(31, 23, 19, 0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
         .chat-msg.mine {
             align-self: flex-end;
-            background-color: var(--brand-color);
-            color: white;
             border-bottom-right-radius: 2px;
         }
 
         .chat-msg.others {
             align-self: flex-start;
-            background-color: #eee;
-            color: #333;
             border-bottom-left-radius: 2px;
         }
 
@@ -357,9 +357,11 @@
             font-size: 10px;
             font-weight: 900;
             text-transform: uppercase;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
             display: block;
-            opacity: 0.7;
+            opacity: 0.8;
+            border-bottom: 1px solid rgba(31, 23, 19, 0.1);
+            padding-bottom: 2px;
         }
 
         .msg-time {
@@ -373,6 +375,18 @@
         .chat-input-area {
             display: flex;
             gap: 8px;
+        }
+
+        .clear-chat-btn {
+            background: none;
+            border: none;
+            color: var(--error);
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            padding: 4px;
+            display: none; /* Скрыта по умолчанию */
         }
 
         .form-group {
@@ -555,7 +569,6 @@
                     <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
                 </svg>
             </button>
-            <!-- НОВАЯ КНОПКА ЧАТА -->
             <button class="action-btn" id="openChatBtn" title="Общий чат">
                 <svg viewBox="0 0 24 24">
                     <path d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M20,16H5.17L4,17.17V4H20V16Z" />
@@ -575,7 +588,8 @@
     <div class="modal-overlay" id="chatModal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title">Общий чат</span>
+                <span class="modal-title">Чат</span>
+                <button id="clearChatBtn" class="clear-chat-btn">Очистить</button>
                 <button class="close-modal" onclick="closeAllModals()">&times;</button>
             </div>
             <div id="chatMessages">
@@ -722,7 +736,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, updateDoc, serverTimestamp, query, onSnapshot, getDocs, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, onSnapshot, getDocs, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -802,6 +816,13 @@
             `;
             document.getElementById('logoutBtn').onclick = logout;
             controlsArea.style.display = 'block';
+            
+            // Показываем кнопку очистки только для ROOT
+            if (user.type === 'ROOT') {
+                const clearBtn = document.getElementById('clearChatBtn');
+                if (clearBtn) clearBtn.style.display = 'block';
+            }
+
             autoLogActivity(user);
             if (globalEvents.length > 0) renderEvents(globalEvents);
         }
@@ -852,7 +873,6 @@
         // --- ЛОГИКА ЧАТА ---
         function subscribeToChat() {
             const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
-            // Ограничиваем последние 50 сообщений. Сортировка по timestamp делается в JS для простоты (Rule 2)
             onSnapshot(chatRef, (snapshot) => {
                 let msgs = [];
                 snapshot.forEach(doc => msgs.push({id: doc.id, ...doc.data()}));
@@ -868,14 +888,14 @@
                     const time = m.timestamp ? new Date(m.timestamp.seconds * 1000).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) : '';
                     
                     div.innerHTML = `
-                        ${!isMine ? `<span class="msg-user">${m.userName}</span>` : ''}
+                        <span class="msg-user">${m.userName}</span>
                         <div>${m.text}</div>
                         <span class="msg-time">${time}</span>
                     `;
                     chatContainer.appendChild(div);
                 });
                 chatContainer.scrollTop = chatContainer.scrollHeight;
-            });
+            }, (err) => console.error(err));
         }
 
         async function sendChatMessage() {
@@ -899,6 +919,18 @@
             }
         }
 
+        async function clearChatHistory() {
+            if (!currentUser || currentUser.type !== 'ROOT') return;
+            if (!confirm('Вы уверены, что хотите очистить историю чата?')) return;
+
+            try {
+                const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
+                const snapshot = await getDocs(chatRef);
+                const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'chat_messages', d.id)));
+                await Promise.all(deletePromises);
+            } catch (e) { console.error("Error clearing chat:", e); }
+        }
+
         document.getElementById('openChatBtn').onclick = () => {
             document.getElementById('chatModal').style.display = 'flex';
             setTimeout(() => {
@@ -909,6 +941,7 @@
 
         document.getElementById('sendMsgBtn').onclick = sendChatMessage;
         document.getElementById('chatInput').onkeypress = (e) => { if(e.key === 'Enter') sendChatMessage(); };
+        document.getElementById('clearChatBtn').onclick = clearChatHistory;
 
         // --- КОНЕЦ ЛОГИКИ ЧАТА ---
 
