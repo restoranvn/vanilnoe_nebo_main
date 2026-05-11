@@ -122,6 +122,24 @@
             margin-bottom: 12px;
         }
 
+        .btn-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .notification-dot {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 12px;
+            height: 12px;
+            background-color: var(--error);
+            border: 2px solid var(--primary-bg);
+            border-radius: 50%;
+            display: none; /* Скрыт по умолчанию */
+            z-index: 5;
+        }
+
         .action-btn {
             width: 50px;
             height: 50px;
@@ -316,7 +334,6 @@
             line-height: 1;
         }
 
-        /* ЧАТ СПЕЦИФИЧНЫЕ СТИЛИ */
         #chatMessages {
             height: 300px;
             overflow-y: auto;
@@ -565,21 +582,28 @@
 
     <div class="controls-area" id="controlsArea">
         <div class="buttons-grid">
-            <button class="action-btn" id="openCalendar" title="Открыть календарь">
-                <svg viewBox="0 0 24 24">
-                    <path d="M19,4H18V2H16V4H8V2H6V4H5C3.89,4 3,4.9 3,6V20A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V6A2,2 0 0,0 19,4M19,20H5V10H19V20M19,8H5V6H19V8Z" />
-                </svg>
-            </button>
-            <button class="action-btn" id="addEntryBtn" title="Добавить запись">
-                <svg viewBox="0 0 24 24">
-                    <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
-                </svg>
-            </button>
-            <button class="action-btn" id="openChatBtn" title="Общий чат">
-                <svg viewBox="0 0 24 24">
-                    <path d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M20,16H5.17L4,17.17V4H20V16Z" />
-                </svg>
-            </button>
+            <div class="btn-wrapper">
+                <button class="action-btn" id="openCalendar" title="Открыть календарь">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19,4H18V2H16V4H8V2H6V4H5C3.89,4 3,4.9 3,6V20A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V6A2,2 0 0,0 19,4M19,20H5V10H19V20M19,8H5V6H19V8Z" />
+                    </svg>
+                </button>
+            </div>
+            <div class="btn-wrapper">
+                <button class="action-btn" id="addEntryBtn" title="Добавить запись">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
+                    </svg>
+                </button>
+            </div>
+            <div class="btn-wrapper">
+                <div id="chatNotification" class="notification-dot"></div>
+                <button class="action-btn" id="openChatBtn" title="Общий чат">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M20,16H5.17L4,17.17V4H20V16Z" />
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <div class="events-container">
@@ -610,6 +634,7 @@
         </div>
     </div>
 
+    <!-- Остальные модалки без изменений... -->
     <div class="modal-overlay" id="calendarModal">
         <div class="modal-content" id="swipeArea" style="touch-action: none;">
             <div class="modal-header">
@@ -624,7 +649,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА КЕЙТЕРИНГ -->
     <div class="modal-overlay" id="cateringModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -653,7 +677,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА БАНКЕТ -->
     <div class="modal-overlay" id="banketModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -688,7 +711,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА ПОДРОБНОСТЕЙ -->
     <div class="modal-overlay" id="infoModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -701,7 +723,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА РЕДАКТИРОВАНИЯ -->
     <div class="modal-overlay" id="editModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -781,11 +802,13 @@
         const dateTitle = document.getElementById('currentDateTitle');
         const swipeArea = document.getElementById('swipeArea');
         const upcomingList = document.getElementById('upcomingEventsList');
+        const chatNotification = document.getElementById('chatNotification');
 
         let currentUser = null;
         let globalEvents = [];
         let displayedMonth = new Date().getMonth();
         let displayedYear = new Date().getFullYear();
+        let isChatOpen = false;
 
         async function initAuth() {
             try { 
@@ -882,6 +905,15 @@
                 snapshot.forEach(doc => msgs.push({id: doc.id, ...doc.data()}));
                 msgs.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
                 
+                // Проверка непрочитанных
+                if (!isChatOpen && msgs.length > 0) {
+                    const lastReadTime = localStorage.getItem('chat_last_read') || 0;
+                    const lastMsgTime = msgs[msgs.length - 1].timestamp?.seconds || 0;
+                    if (lastMsgTime > lastReadTime) {
+                        chatNotification.style.display = 'block';
+                    }
+                }
+
                 const chatContainer = document.getElementById('chatMessages');
                 chatContainer.innerHTML = '';
                 msgs.forEach(m => {
@@ -938,6 +970,11 @@
         }
 
         document.getElementById('openChatBtn').onclick = () => {
+            isChatOpen = true;
+            chatNotification.style.display = 'none';
+            // Сохраняем время прочтения (секунды)
+            localStorage.setItem('chat_last_read', Math.floor(Date.now() / 1000));
+            
             document.getElementById('chatModal').style.display = 'flex';
             setTimeout(() => {
                 const container = document.getElementById('chatMessages');
@@ -1298,6 +1335,7 @@
             if(hallSelect) hallSelect.selectedIndex = 0;
             const infoTitle = document.getElementById('infoModalTitle');
             if(infoTitle) infoTitle.innerText = "Информация";
+            isChatOpen = false;
         };
 
         document.getElementById('closeCalendar').onclick = closeAllModals;
@@ -1305,6 +1343,7 @@
 
         window.logout = function() {
             localStorage.removeItem('mutki_user');
+            localStorage.removeItem('chat_last_read');
             location.reload();
         }
 
