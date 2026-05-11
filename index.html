@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Админские Мутки</title>
     <meta name="theme-color" content="#604539">
     <style>
@@ -26,6 +26,9 @@
             color: #333;
             overflow-x: hidden;
             -webkit-tap-highlight-color: transparent;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         header {
@@ -37,6 +40,7 @@
             color: white;
             position: relative;
             z-index: 10;
+            flex-shrink: 0;
         }
 
         .logo-container {
@@ -64,6 +68,7 @@
             justify-content: center;
             color: white;
             position: relative;
+            flex-shrink: 0;
         }
 
         .token-input {
@@ -113,6 +118,8 @@
             display: none;
             padding: 16px;
             animation: fadeIn 0.4s ease-out;
+            flex-grow: 1;
+            overflow-y: auto;
         }
 
         .buttons-grid {
@@ -270,6 +277,7 @@
             font-style: italic;
         }
 
+        /* --- МОДАЛЬНЫЕ ОКНА --- */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -280,14 +288,12 @@
             background: rgba(0,0,0,0.5);
             z-index: 100;
             justify-content: center;
-            align-items: flex-start;
+            align-items: center;
             backdrop-filter: blur(2px);
             padding: 12px;
             box-sizing: border-box;
-            overflow-y: hidden; /* Чат сам будет скроллиться */
         }
 
-        /* Общая структура модалок */
         .modal-content {
             background: white;
             border: 1px solid var(--dark-ui);
@@ -298,23 +304,25 @@
             box-shadow: 0 5px 25px rgba(0,0,0,0.2);
             box-sizing: border-box;
             position: relative;
-            margin-top: 60px;
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
-        /* Специфические стили для модалки чата (Full-ish screen) */
+        /* Специфические стили для чата: Фиксация верха и адаптивная высота */
         .modal-content.full-chat {
             max-width: none;
-            margin-top: 0;
-            height: calc(100% - 24px); /* Отступы по 12px сверху и снизу */
+            height: calc(100% - 24px); 
             display: flex;
             flex-direction: column;
-            top: 12px;
+            align-self: flex-start; /* Фиксируем по верхнему краю */
+            top: 0;
+            max-height: none; /* Перебиваем общее правило */
+            overflow: hidden; /* Внутренние элементы будут скроллиться */
         }
 
         .modal-content.root-mini {
             max-width: fit-content;
             padding: 20px 30px;
-            margin-top: 200px;
         }
 
         .modal-header {
@@ -630,15 +638,13 @@
 
     <!-- МОДАЛКА ЧАТА -->
     <div class="modal-overlay" id="chatModal">
-        <div class="modal-content full-chat">
+        <div class="modal-content full-chat" id="chatContent">
             <div class="modal-header">
                 <span class="modal-title">Чат</span>
                 <button id="clearChatBtn" class="clear-chat-btn">Очистить</button>
                 <button class="close-modal" onclick="closeAllModals()">&times;</button>
             </div>
-            <div id="chatMessages">
-                <!-- Сообщения будут тут -->
-            </div>
+            <div id="chatMessages"></div>
             <div class="chat-input-area">
                 <input type="text" id="chatInput" class="form-input" placeholder="Сообщение..." autocomplete="off">
                 <button class="action-btn" id="sendMsgBtn" style="width: 48px; min-width: 48px; height: 48px;">
@@ -731,9 +737,7 @@
                 <span class="modal-title" id="infoModalTitle">Информация</span>
                 <button class="close-modal" onclick="closeAllModals()">&times;</button>
             </div>
-            <div id="infoDetailsContainer">
-                <!-- Детали -->
-            </div>
+            <div id="infoDetailsContainer"></div>
         </div>
     </div>
 
@@ -823,6 +827,39 @@
         let displayedMonth = new Date().getMonth();
         let displayedYear = new Date().getFullYear();
         let isChatOpen = false;
+
+        // --- Управление высотой вьюпорта для мобилок ---
+        const visualViewport = window.visualViewport;
+        function updateViewport() {
+            if (!visualViewport) return;
+            const chatModal = document.getElementById('chatModal');
+            const chatContent = document.getElementById('chatContent');
+            
+            if (isChatOpen) {
+                // При появлении клавиатуры высота вьюпорта уменьшается. 
+                // Мы устанавливаем высоту модалки равной высоте видимой области.
+                const height = visualViewport.height;
+                const offset = visualViewport.offsetTop;
+                
+                chatModal.style.height = `${height}px`;
+                chatModal.style.top = `${offset}px`;
+                
+                // Чтобы шапка оставалась сверху, просто даем контенту занять 100%
+                chatContent.style.height = `calc(100% - 24px)`;
+                
+                // Автоскролл к последнему сообщению
+                const msgContainer = document.getElementById('chatMessages');
+                msgContainer.scrollTop = msgContainer.scrollHeight;
+            } else {
+                chatModal.style.height = '100%';
+                chatModal.style.top = '0';
+            }
+        }
+
+        if (visualViewport) {
+            visualViewport.addEventListener('resize', updateViewport);
+            visualViewport.addEventListener('scroll', updateViewport);
+        }
 
         async function initAuth() {
             try { 
@@ -988,6 +1025,7 @@
             localStorage.setItem('chat_last_read', Math.floor(Date.now() / 1000));
             
             document.getElementById('chatModal').style.display = 'flex';
+            updateViewport();
             setTimeout(() => {
                 const container = document.getElementById('chatMessages');
                 container.scrollTop = container.scrollHeight;
@@ -1341,7 +1379,11 @@
         };
 
         window.closeAllModals = function() {
-            document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+            document.querySelectorAll('.modal-overlay').forEach(m => {
+                m.style.display = 'none';
+                m.style.height = '100%';
+                m.style.top = '0';
+            });
             document.querySelectorAll('.form-input').forEach(i => i.value = '');
             const hallSelect = document.getElementById('banketHallSelect');
             if(hallSelect) hallSelect.selectedIndex = 0;
