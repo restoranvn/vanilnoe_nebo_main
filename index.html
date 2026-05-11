@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Админские Мутки</title>
+    <link rel="icon" type="image/x-icon" href="ico/catering-b.ico">
     <meta name="theme-color" content="#604539">
     <style>
         :root {
@@ -46,13 +47,14 @@
         .logo-container {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
 
         .logo-img {
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
         }
 
         .header-subtitle {
@@ -277,7 +279,6 @@
             font-style: italic;
         }
 
-        /* --- МОДАЛЬНЫЕ ОКНА --- */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -308,16 +309,15 @@
             overflow-y: auto;
         }
 
-        /* Специфические стили для чата: Фиксация верха и адаптивная высота */
         .modal-content.full-chat {
             max-width: none;
             height: calc(100% - 24px); 
             display: flex;
             flex-direction: column;
-            align-self: flex-start; /* Фиксируем по верхнему краю */
+            align-self: flex-start;
             top: 0;
-            max-height: none; /* Перебиваем общее правило */
-            overflow: hidden; /* Внутренние элементы будут скроллиться */
+            max-height: none;
+            overflow: hidden;
         }
 
         .modal-content.root-mini {
@@ -590,7 +590,8 @@
 
     <header>
         <div class="logo-container">
-            <img src="ico/catering-b.ico" alt="Logo" class="logo-img" onerror="this.style.display='none'">
+            <!-- 2. Логотип в левом крае хедера -->
+            <img src="ico/catering-b.ico" alt="VN" class="logo-img">
         </div>
         <div style="text-align: right;">
             <div style="font-size: 14px; font-weight: 900; letter-spacing: 0.5px;">АДМИНСКИЕ МУТКИ</div>
@@ -654,7 +655,7 @@
         </div>
     </div>
 
-    <!-- Остальные модалки -->
+    <!-- КАЛЕНДАРЬ -->
     <div class="modal-overlay" id="calendarModal">
         <div class="modal-content" id="swipeArea" style="touch-action: none;">
             <div class="modal-header">
@@ -669,6 +670,7 @@
         </div>
     </div>
 
+    <!-- КЕЙТЕРИНГ -->
     <div class="modal-overlay" id="cateringModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -697,6 +699,7 @@
         </div>
     </div>
 
+    <!-- БАНКЕТ -->
     <div class="modal-overlay" id="banketModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -781,20 +784,19 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, onSnapshot, getDocs, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, query, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBEn2ZheCPUMgTKxuQmHw0MPehIu1B85Do",
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "",
             authDomain: "vanilnoeneboapp.firebaseapp.com",
             projectId: "vanilnoeneboapp",
             storageBucket: "vanilnoeneboapp.firebasestorage.app",
             messagingSenderId: "648309181653",
             appId: "1:648309181653:web:64f690d6acb67ea8fea65c"
         };
-
-        const actualConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
-        const app = initializeApp(actualConfig);
+        
+        const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'vn-mutki';
@@ -828,26 +830,18 @@
         let displayedYear = new Date().getFullYear();
         let isChatOpen = false;
 
-        // --- Управление высотой вьюпорта для мобилок ---
+        // Помощник для клавиатуры
         const visualViewport = window.visualViewport;
         function updateViewport() {
             if (!visualViewport) return;
             const chatModal = document.getElementById('chatModal');
             const chatContent = document.getElementById('chatContent');
-            
             if (isChatOpen) {
-                // При появлении клавиатуры высота вьюпорта уменьшается. 
-                // Мы устанавливаем высоту модалки равной высоте видимой области.
                 const height = visualViewport.height;
                 const offset = visualViewport.offsetTop;
-                
                 chatModal.style.height = `${height}px`;
                 chatModal.style.top = `${offset}px`;
-                
-                // Чтобы шапка оставалась сверху, просто даем контенту занять 100%
                 chatContent.style.height = `calc(100% - 24px)`;
-                
-                // Автоскролл к последнему сообщению
                 const msgContainer = document.getElementById('chatMessages');
                 msgContainer.scrollTop = msgContainer.scrollHeight;
             } else {
@@ -896,12 +890,10 @@
             `;
             document.getElementById('logoutBtn').onclick = logout;
             controlsArea.style.display = 'block';
-            
             if (user.type === 'ROOT') {
                 const clearBtn = document.getElementById('clearChatBtn');
                 if (clearBtn) clearBtn.style.display = 'block';
             }
-
             autoLogActivity(user);
             if (globalEvents.length > 0) renderEvents(globalEvents);
         }
@@ -930,14 +922,11 @@
                 snapshot.forEach(doc => {
                     events.push({ id: doc.id, ...doc.data() });
                 });
-
                 const parseDate = (s) => {
                     if (!s) return 0;
                     const parts = s.split('.').map(Number);
-                    if (parts.length < 3) return 0;
                     return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
                 };
-
                 events.sort((a, b) => parseDate(a.date) - parseDate(b.date));
                 globalEvents = events;
                 renderEvents(events);
@@ -955,31 +944,19 @@
                 let msgs = [];
                 snapshot.forEach(doc => msgs.push({id: doc.id, ...doc.data()}));
                 msgs.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
-                
                 if (!isChatOpen && msgs.length > 0) {
                     const lastReadTime = localStorage.getItem('chat_last_read') || 0;
                     const lastMsgTime = msgs[msgs.length - 1].timestamp?.seconds || 0;
-                    if (lastMsgTime > lastReadTime) {
-                        chatNotification.style.display = 'block';
-                    }
+                    if (lastMsgTime > lastReadTime) chatNotification.style.display = 'block';
                 }
-
                 const chatContainer = document.getElementById('chatMessages');
                 chatContainer.innerHTML = '';
                 msgs.forEach(m => {
                     const div = document.createElement('div');
                     const isMine = currentUser && m.userName === currentUser.name;
                     div.className = `chat-msg ${isMine ? 'mine' : 'others'}`;
-                    
                     const time = m.timestamp ? new Date(m.timestamp.seconds * 1000).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) : '';
-                    
-                    div.innerHTML = `
-                        <div class="msg-header">
-                            <span class="msg-user">${m.userName}</span>
-                            <span class="msg-time">${time}</span>
-                        </div>
-                        <div>${m.text}</div>
-                    `;
+                    div.innerHTML = `<div class="msg-header"><span class="msg-user">${m.userName}</span><span class="msg-time">${time}</span></div><div>${m.text}</div>`;
                     chatContainer.appendChild(div);
                 });
                 chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -990,46 +967,32 @@
             const input = document.getElementById('chatInput');
             const text = input.value.trim();
             if (!text || !currentUser) return;
-            
             input.disabled = true;
             try {
                 const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
-                await addDoc(chatRef, {
-                    userName: currentUser.name,
-                    text: text,
-                    timestamp: serverTimestamp()
-                });
+                await addDoc(chatRef, { userName: currentUser.name, text: text, timestamp: serverTimestamp() });
                 input.value = '';
-            } catch(e) { console.error(e); }
-            finally { 
-                input.disabled = false; 
-                input.focus();
-            }
+            } catch(e) { console.error(e); } finally { input.disabled = false; input.focus(); }
         }
 
         async function clearChatHistory() {
             if (!currentUser || currentUser.type !== 'ROOT') return;
             if (!confirm('Вы уверены, что хотите очистить историю чата?')) return;
-
             try {
                 const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
                 const snapshot = await getDocs(chatRef);
                 const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'chat_messages', d.id)));
                 await Promise.all(deletePromises);
-            } catch (e) { console.error("Error clearing chat:", e); }
+            } catch (e) { console.error(e); }
         }
 
         document.getElementById('openChatBtn').onclick = () => {
             isChatOpen = true;
             chatNotification.style.display = 'none';
             localStorage.setItem('chat_last_read', Math.floor(Date.now() / 1000));
-            
             document.getElementById('chatModal').style.display = 'flex';
             updateViewport();
-            setTimeout(() => {
-                const container = document.getElementById('chatMessages');
-                container.scrollTop = container.scrollHeight;
-            }, 100);
+            setTimeout(() => { document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight; }, 100);
         };
 
         document.getElementById('sendMsgBtn').onclick = sendChatMessage;
@@ -1040,27 +1003,21 @@
             const today = new Date();
             const todayStr = today.toLocaleDateString('ru-RU');
             const todayTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-
             const parseDate = (s) => {
                 if (!s) return 0;
                 const parts = s.split('.').map(Number);
-                if (parts.length < 3) return 0;
                 return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
             };
-
             let filtered = events.filter(e => parseDate(e.date) >= todayTime);
             if (currentUser && currentUser.type !== "ROOT") {
                 filtered = filtered.filter(e => e.type === currentUser.type);
             }
-
             if (filtered.length === 0) {
                 upcomingList.innerHTML = `<div class="no-events">Мероприятий пока нет</div>`;
                 return;
             }
-
             const limitArr = filtered.slice(0, 20);
             upcomingList.innerHTML = '';
-
             let separatorAdded = false;
             let hasTodayEvents = limitArr.some(e => e.date === todayStr);
 
@@ -1071,58 +1028,32 @@
                     upcomingList.appendChild(separator);
                     separatorAdded = true;
                 }
-
                 const item = document.createElement('div');
                 item.className = 'event-item';
                 const shortDate = e.date ? e.date.substring(0, 5) : "--.--";
-                
-                let description = '';
-                if (e.type === 'Кейтеринг') {
-                    description = e.eventName || 'Кейтеринг (без названия)';
-                } else {
-                    description = e.customer || 'Заказчик не указан';
-                    if (e.hall) description += ` | ${e.hall}`;
-                }
-
-                let typePrefix = '';
-                if (currentUser && currentUser.type === "ROOT") {
-                    typePrefix = `<span class="event-type-tag">[${e.type === 'Кейтеринг' ? 'К' : 'Б'}]</span>`;
-                }
+                let description = e.type === 'Кейтеринг' ? (e.eventName || 'Кейтеринг') : (e.customer || 'Банкет');
+                if (e.type !== 'Кейтеринг' && e.hall) description += ` | ${e.hall}`;
+                let typePrefix = (currentUser && currentUser.type === "ROOT") ? `<span class="event-type-tag">[${e.type === 'Кейтеринг' ? 'К' : 'Б'}]</span>` : '';
 
                 item.innerHTML = `
                     <span class="event-date">${shortDate}</span>
-                    <div class="event-content-wrapper">
-                        <div class="event-desc">${typePrefix}${description}</div>
-                    </div>
+                    <div class="event-content-wrapper"><div class="event-desc">${typePrefix}${description}</div></div>
                     <div class="action-icons-container" id="actions-${e.id}"></div>
                 `;
-
                 upcomingList.appendChild(item);
                 const actionContainer = document.getElementById(`actions-${e.id}`);
-
                 const infoBtn = document.createElement('button');
                 infoBtn.className = 'info-icon-btn';
                 infoBtn.onclick = () => openInfoModal(e);
-                infoBtn.innerHTML = `
-                    <svg viewBox="0 0 24 24">
-                        <path d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" />
-                    </svg>
-                `;
+                infoBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" /></svg>`;
                 actionContainer.appendChild(infoBtn);
 
                 if (currentUser) {
                     const editBtn = document.createElement('button');
                     editBtn.className = 'edit-icon-btn';
-                    if (currentUser.type === 'ROOT') {
-                        editBtn.classList.add('readonly');
-                    } else {
-                        editBtn.onclick = () => openEditModal(e);
-                    }
-                    editBtn.innerHTML = `
-                        <svg viewBox="0 0 24 24">
-                            <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" />
-                        </svg>
-                    `;
+                    if (currentUser.type === 'ROOT') editBtn.classList.add('readonly');
+                    else editBtn.onclick = () => openEditModal(e);
+                    editBtn.innerHTML = `<svg viewBox="0 0 24 24"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" /></svg>`;
                     actionContainer.appendChild(editBtn);
                 }
             });
@@ -1131,42 +1062,11 @@
         function openInfoModal(event) {
             const container = document.getElementById('infoDetailsContainer');
             const titleEl = document.getElementById('infoModalTitle');
-            let content = '';
-
-            if (event.type === 'Кейтеринг') {
-                titleEl.innerText = event.eventName || 'Кейтеринг';
-            } else {
-                titleEl.innerText = event.customer || 'Банкет';
-            }
-
-            if (currentUser && currentUser.type === 'ROOT') {
-                content += `
-                    <div class="detail-row">
-                        <span class="detail-label">Тип</span>
-                        <span class="detail-value">${event.type}</span>
-                    </div>
-                `;
-            }
-
+            titleEl.innerText = event.type === 'Кейтеринг' ? (event.eventName || 'Кейтеринг') : (event.customer || 'Банкет');
+            let content = currentUser?.type === 'ROOT' ? `<div class="detail-row"><span class="detail-label">Тип</span><span class="detail-value">${event.type}</span></div>` : '';
             content += `<div class="detail-row"><span class="detail-label">Дата</span><span class="detail-value">${event.date}</span></div>`;
-
-            if (event.type === 'Кейтеринг') {
-                content += `<div class="detail-row"><span class="detail-label">Локация</span><span class="detail-value">${event.location || '-'}</span></div>`;
-            } else {
-                content += `<div class="detail-row"><span class="detail-label">Зал</span><span class="detail-value">${event.hall || '-'}</span></div>`;
-            }
-
-            content += `
-                <div class="detail-row">
-                    <span class="detail-label">Гости</span>
-                    <span class="detail-value">${event.guests || 'Не указано'}</span>
-                </div>
-                <div class="detail-row" style="opacity: 0.5">
-                    <span class="detail-label">Создано</span>
-                    <span class="detail-value" style="font-size: 11px">${event.createdBy || 'Система'}</span>
-                </div>
-            `;
-
+            content += event.type === 'Кейтеринг' ? `<div class="detail-row"><span class="detail-label">Локация</span><span class="detail-value">${event.location || '-'}</span></div>` : `<div class="detail-row"><span class="detail-label">Зал</span><span class="detail-value">${event.hall || '-'}</span></div>`;
+            content += `<div class="detail-row"><span class="detail-label">Гости</span><span class="detail-value">${event.guests || 'Не указано'}</span></div>`;
             container.innerHTML = content;
             document.getElementById('infoModal').style.display = 'flex';
         }
@@ -1176,34 +1076,22 @@
             document.getElementById('editType').value = event.type;
             document.getElementById('editDate').value = event.date;
             document.getElementById('editGuestsInput').value = event.guests || '';
-            
             const infoInput = document.getElementById('editInfoInput');
-            const labelInfo = document.getElementById('editLabelInfo');
-            const labelExtra = document.getElementById('editLabelExtra');
             const extraContainer = document.getElementById('editExtraContainer');
-            
             extraContainer.innerHTML = '';
-
             if (event.type === 'Кейтеринг') {
-                labelInfo.innerText = 'Название мероприятия';
+                document.getElementById('editLabelInfo').innerText = 'Название мероприятия';
                 infoInput.value = event.eventName || '';
-                labelExtra.innerText = 'Локация';
-                const locInput = document.createElement('input');
-                locInput.type = 'text'; locInput.className = 'form-input'; locInput.id = 'editExtraInput';
-                locInput.value = event.location || '';
+                document.getElementById('editLabelExtra').innerText = 'Локация';
+                const locInput = document.createElement('input'); locInput.type = 'text'; locInput.className = 'form-input'; locInput.id = 'editExtraInput'; locInput.value = event.location || '';
                 extraContainer.appendChild(locInput);
             } else {
-                labelInfo.innerText = 'Заказчик';
+                document.getElementById('editLabelInfo').innerText = 'Заказчик';
                 infoInput.value = event.customer || '';
-                labelExtra.innerText = 'Зал';
-                const hallSelect = document.createElement('select');
-                hallSelect.className = 'form-select'; hallSelect.id = 'editExtraInput';
-                ['ББЗ', 'МБЗ', 'Волга', 'Чайка'].forEach(h => {
-                    const opt = document.createElement('option'); opt.value = h; opt.innerText = h;
-                    if (event.hall === h) opt.selected = true;
-                    hallSelect.appendChild(opt);
-                });
-                extraContainer.appendChild(hallSelect);
+                document.getElementById('editLabelExtra').innerText = 'Зал';
+                const hs = document.createElement('select'); hs.className = 'form-select'; hs.id = 'editExtraInput';
+                ['ББЗ', 'МБЗ', 'Волга', 'Чайка'].forEach(h => { const o = document.createElement('option'); o.value = h; o.innerText = h; if (event.hall === h) o.selected = true; hs.appendChild(o); });
+                extraContainer.appendChild(hs);
             }
             document.getElementById('editModal').style.display = 'flex';
         }
@@ -1211,105 +1099,52 @@
         async function saveEdit() {
             const id = document.getElementById('editId').value;
             const type = document.getElementById('editType').value;
-            const date = document.getElementById('editDate').value;
-            const info = document.getElementById('editInfoInput').value;
-            const extra = document.getElementById('editExtraInput').value;
-            const guests = document.getElementById('editGuestsInput').value;
-
-            if (!date || !info) return;
+            const updateData = { 
+                date: document.getElementById('editDate').value,
+                guests: document.getElementById('editGuestsInput').value,
+                updatedAt: serverTimestamp(), updatedBy: currentUser.name
+            };
+            if (type === 'Кейтеринг') { updateData.eventName = document.getElementById('editInfoInput').value; updateData.location = document.getElementById('editExtraInput').value; }
+            else { updateData.customer = document.getElementById('editInfoInput').value; updateData.hall = document.getElementById('editExtraInput').value; }
             const btn = document.getElementById('saveEditBtn');
-            btn.disabled = true;
-            btn.innerText = "Сохранение...";
-            try {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'events', id);
-                const updateData = { 
-                    date: date,
-                    guests: guests,
-                    updatedAt: serverTimestamp(),
-                    updatedBy: currentUser.name
-                };
-                if (type === 'Кейтеринг') {
-                    updateData.eventName = info;
-                    updateData.location = extra;
-                } else {
-                    updateData.customer = info;
-                    updateData.hall = extra;
-                }
-                await updateDoc(docRef, updateData);
-                closeAllModals();
-            } catch (e) { console.error(e); } finally {
-                btn.disabled = false;
-                btn.innerText = "Сохранить";
-            }
+            btn.disabled = true; try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', id), updateData); closeAllModals(); } catch (e) { console.error(e); } finally { btn.disabled = false; }
         }
 
         document.getElementById('saveEditBtn').onclick = saveEdit;
 
         document.querySelectorAll('.date-mask').forEach(input => {
             input.addEventListener('input', (e) => {
-                let value = e.target.value.replace(/\D/g, ''); 
-                if (value.length > 8) value = value.slice(0, 8); 
-                let formattedValue = '';
-                if (value.length > 0) {
-                    formattedValue = value.slice(0, 2);
-                    if (value.length > 2) {
-                        formattedValue += '.' + value.slice(2, 4);
-                        if (value.length > 4) formattedValue += '.' + value.slice(4, 8);
-                    }
-                }
-                e.target.value = formattedValue;
+                let v = e.target.value.replace(/\D/g, ''); 
+                if (v.length > 8) v = v.slice(0, 8); 
+                let f = '';
+                if (v.length > 0) { f = v.slice(0, 2); if (v.length > 2) { f += '.' + v.slice(2, 4); if (v.length > 4) f += '.' + v.slice(4, 8); } }
+                e.target.value = f;
             });
-            input.addEventListener('blur', (e) => {
-                const val = e.target.value;
-                if (val.length === 5 && val.includes('.')) {
-                    const currentYear = new Date().getFullYear();
-                    e.target.value = val + '.' + currentYear;
-                }
-            });
+            input.addEventListener('blur', (e) => { if (e.target.value.length === 5) e.target.value += '.' + new Date().getFullYear(); });
         });
 
         function buildCalendar(m, y) {
-            const realNow = new Date();
-            const realToday = realNow.getDate();
-            const realMonth = realNow.getMonth();
-            const realYear = realNow.getFullYear();
-            const monthsGenitive = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
-            const monthsNominative = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-
-            const isCurrentMonth = (m === realMonth && y === realYear);
-            dateTitle.innerText = isCurrentMonth ? `${realToday} ${monthsGenitive[m]}` : `${monthsNominative[m]} ${y !== realYear ? y : ''}`;
-
+            const now = new Date();
+            const monthsG = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+            const monthsN = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+            dateTitle.innerText = (m === now.getMonth() && y === now.getFullYear()) ? `${now.getDate()} ${monthsG[m]}` : `${monthsN[m]} ${y !== now.getFullYear() ? y : ''}`;
             calGrid.innerHTML = '';
-            ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].forEach(d => {
-                const el = document.createElement('div');
-                el.className = 'day-name'; el.innerText = d; calGrid.appendChild(el);
-            });
-
-            const firstDay = new Date(y, m, 1).getDay();
-            const offset = firstDay === 0 ? 6 : firstDay - 1;
-            for (let i = 0; i < offset; i++) {
-                const empty = document.createElement('div'); empty.style.aspectRatio = "1/1";
-                calGrid.appendChild(empty);
-            }
-
-            const daysInMonth = new Date(y, m + 1, 0).getDate();
+            ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].forEach(d => { const el = document.createElement('div'); el.className = 'day-name'; el.innerText = d; calGrid.appendChild(el); });
+            const first = new Date(y, m, 1).getDay();
+            const offset = first === 0 ? 6 : first - 1;
+            for (let i = 0; i < offset; i++) calGrid.appendChild(document.createElement('div'));
+            const days = new Date(y, m + 1, 0).getDate();
             const eventDates = new Set();
             globalEvents.forEach(ev => {
-                if (currentUser && currentUser.type !== "ROOT" && ev.type !== currentUser.type) return;
-                const parts = ev.date.split('.');
-                if (parts.length === 3) {
-                    const dVal = parseInt(parts[0]), mVal = parseInt(parts[1]) - 1, yVal = parseInt(parts[2]);
-                    if (mVal === m && yVal === y) eventDates.add(dVal);
-                }
+                if (currentUser?.type !== "ROOT" && ev.type !== currentUser?.type) return;
+                const p = ev.date.split('.');
+                if (parseInt(p[1]) - 1 === m && parseInt(p[2]) === y) eventDates.add(parseInt(p[0]));
             });
-
-            for (let d = 1; d <= daysInMonth; d++) {
-                const el = document.createElement('div');
-                el.className = 'day';
-                if (isCurrentMonth && d === realToday) el.classList.add('today');
+            for (let d = 1; d <= days; d++) {
+                const el = document.createElement('div'); el.className = 'day';
+                if (m === now.getMonth() && y === now.getFullYear() && d === now.getDate()) el.classList.add('today');
                 if (eventDates.has(d)) el.classList.add('has-event');
-                el.innerText = d;
-                calGrid.appendChild(el);
+                el.innerText = d; calGrid.appendChild(el);
             }
         }
 
@@ -1324,85 +1159,33 @@
             if (teX - tsX > 50) document.getElementById('prevMonth').click();
         }, {passive:true});
 
-        document.getElementById('openCalendar').onclick = () => {
-            displayedMonth = new Date().getMonth(); displayedYear = new Date().getFullYear();
-            buildCalendar(displayedMonth, displayedYear);
-            document.getElementById('calendarModal').style.display = 'flex';
-        };
+        document.getElementById('openCalendar').onclick = () => { displayedMonth = new Date().getMonth(); displayedYear = new Date().getFullYear(); buildCalendar(displayedMonth, displayedYear); document.getElementById('calendarModal').style.display = 'flex'; };
 
         document.getElementById('addEntryBtn').onclick = () => {
             if (!currentUser) return;
-            if (currentUser.type === "ROOT") {
-                document.getElementById('rootModal').style.display = 'flex';
-                return;
-            }
+            if (currentUser.type === "ROOT") { document.getElementById('rootModal').style.display = 'flex'; return; }
             const todayStr = new Date().toLocaleDateString('ru-RU');
-            if (currentUser.type === "Кейтеринг") {
-                document.getElementById('cateringDate').value = todayStr;
-                document.getElementById('cateringModal').style.display = 'flex';
-            } else if (currentUser.type === "Банкет") {
-                document.getElementById('banketDate').value = todayStr;
-                document.getElementById('banketModal').style.display = 'flex';
-            }
+            if (currentUser.type === "Кейтеринг") { document.getElementById('cateringDate').value = todayStr; document.getElementById('cateringModal').style.display = 'flex'; }
+            else { document.getElementById('banketDate').value = todayStr; document.getElementById('banketModal').style.display = 'flex'; }
         };
 
         async function saveData(type, data) {
-            if (!auth.currentUser) return;
-            const btnId = type === 'Кейтеринг' ? 'submitCatering' : 'submitBanket';
-            const btn = document.getElementById(btnId);
-            btn.disabled = true; btn.innerText = "Сохранение...";
-            try {
-                const eventsRef = collection(db, 'artifacts', appId, 'public', 'data', 'events');
-                await addDoc(eventsRef, { ...data, type: type, createdBy: currentUser.name, createdAt: serverTimestamp() });
-                closeAllModals();
-            } catch (e) { console.error(e); } finally {
-                btn.disabled = false; btn.innerText = "Добавить";
-            }
+            const btn = document.getElementById(type === 'Кейтеринг' ? 'submitCatering' : 'submitBanket');
+            btn.disabled = true; try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'events'), { ...data, type, createdBy: currentUser.name, createdAt: serverTimestamp() }); closeAllModals(); } catch (e) { console.error(e); } finally { btn.disabled = false; }
         }
 
-        document.getElementById('submitCatering').onclick = () => {
-            const date = document.getElementById('cateringDate').value;
-            const name = document.getElementById('cateringNameInput').value;
-            const location = document.getElementById('cateringLocationInput').value;
-            const guests = document.getElementById('cateringGuestsInput').value;
-            if (!date || !name) return;
-            saveData('Кейтеринг', { date, eventName: name, location: location, guests: guests });
-        };
-
-        document.getElementById('submitBanket').onclick = () => {
-            const date = document.getElementById('banketDate').value;
-            const customer = document.getElementById('banketCustomerInput').value;
-            const hall = document.getElementById('banketHallSelect').value;
-            const guests = document.getElementById('banketGuestsInput').value;
-            if (!date || !customer || !hall) return;
-            saveData('Банкет', { date, customer, hall: hall, guests: guests });
-        };
+        document.getElementById('submitCatering').onclick = () => saveData('Кейтеринг', { date: document.getElementById('cateringDate').value, eventName: document.getElementById('cateringNameInput').value, location: document.getElementById('cateringLocationInput').value, guests: document.getElementById('cateringGuestsInput').value });
+        document.getElementById('submitBanket').onclick = () => saveData('Банкет', { date: document.getElementById('banketDate').value, customer: document.getElementById('banketCustomerInput').value, hall: document.getElementById('banketHallSelect').value, guests: document.getElementById('banketGuestsInput').value });
 
         window.closeAllModals = function() {
-            document.querySelectorAll('.modal-overlay').forEach(m => {
-                m.style.display = 'none';
-                m.style.height = '100%';
-                m.style.top = '0';
-            });
-            document.querySelectorAll('.form-input').forEach(i => i.value = '');
-            const hallSelect = document.getElementById('banketHallSelect');
-            if(hallSelect) hallSelect.selectedIndex = 0;
-            const infoTitle = document.getElementById('infoModalTitle');
-            if(infoTitle) infoTitle.innerText = "Информация";
+            document.querySelectorAll('.modal-overlay').forEach(m => { m.style.display = 'none'; m.style.height = '100%'; m.style.top = '0'; });
             isChatOpen = false;
         };
 
         document.getElementById('closeCalendar').onclick = closeAllModals;
         window.onclick = (e) => { if (e.target.classList.contains('modal-overlay')) closeAllModals(); };
-
-        window.logout = function() {
-            localStorage.removeItem('mutki_user');
-            localStorage.removeItem('chat_last_read');
-            location.reload();
-        }
-
-        const saved = localStorage.getItem('mutki_user');
-        if (saved) login(JSON.parse(saved));
+        window.logout = function() { localStorage.removeItem('mutki_user'); location.reload(); }
+        const saved = localStorage.getItem('mutki_user'); if (saved) login(JSON.parse(saved));
     </script>
 </body>
 </html>
