@@ -353,23 +353,29 @@
             border-bottom-left-radius: 2px;
         }
 
-        .msg-user {
-            font-size: 10px;
-            font-weight: 900;
-            text-transform: uppercase;
+        .msg-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
             margin-bottom: 4px;
-            display: block;
-            opacity: 0.8;
             border-bottom: 1px solid rgba(31, 23, 19, 0.1);
             padding-bottom: 2px;
         }
 
+        .msg-user {
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            opacity: 0.8;
+            white-space: nowrap;
+        }
+
         .msg-time {
             font-size: 9px;
-            opacity: 0.5;
-            display: block;
-            text-align: right;
-            margin-top: 4px;
+            font-weight: 500;
+            opacity: 0.4;
+            white-space: nowrap;
         }
 
         .chat-input-area {
@@ -386,7 +392,7 @@
             text-transform: uppercase;
             cursor: pointer;
             padding: 4px;
-            display: none; /* Скрыта по умолчанию */
+            display: none;
         }
 
         .form-group {
@@ -817,7 +823,6 @@
             document.getElementById('logoutBtn').onclick = logout;
             controlsArea.style.display = 'block';
             
-            // Показываем кнопку очистки только для ROOT
             if (user.type === 'ROOT') {
                 const clearBtn = document.getElementById('clearChatBtn');
                 if (clearBtn) clearBtn.style.display = 'block';
@@ -870,7 +875,6 @@
             });
         }
 
-        // --- ЛОГИКА ЧАТА ---
         function subscribeToChat() {
             const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
             onSnapshot(chatRef, (snapshot) => {
@@ -888,9 +892,11 @@
                     const time = m.timestamp ? new Date(m.timestamp.seconds * 1000).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) : '';
                     
                     div.innerHTML = `
-                        <span class="msg-user">${m.userName}</span>
+                        <div class="msg-header">
+                            <span class="msg-user">${m.userName}</span>
+                            <span class="msg-time">${time}</span>
+                        </div>
                         <div>${m.text}</div>
-                        <span class="msg-time">${time}</span>
                     `;
                     chatContainer.appendChild(div);
                 });
@@ -942,8 +948,6 @@
         document.getElementById('sendMsgBtn').onclick = sendChatMessage;
         document.getElementById('chatInput').onkeypress = (e) => { if(e.key === 'Enter') sendChatMessage(); };
         document.getElementById('clearChatBtn').onclick = clearChatHistory;
-
-        // --- КОНЕЦ ЛОГИКИ ЧАТА ---
 
         function renderEvents(events) {
             const today = new Date();
