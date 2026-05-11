@@ -283,18 +283,27 @@
             margin-bottom: 20px;
         }
 
+        .modal-content.root-mini {
+            max-width: fit-content;
+            padding: 20px 30px;
+            margin-top: 200px;
+        }
+
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 16px;
             color: var(--dark-ui);
+            gap: 15px;
         }
 
         .modal-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 800;
             text-transform: uppercase;
+            flex: 1;
+            line-height: 1.2;
         }
 
         .close-modal {
@@ -305,6 +314,65 @@
             color: var(--dark-ui);
             padding: 0;
             line-height: 1;
+        }
+
+        /* ЧАТ СПЕЦИФИЧНЫЕ СТИЛИ */
+        #chatMessages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #fafafa;
+        }
+
+        .chat-msg {
+            max-width: 85%;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.4;
+            position: relative;
+        }
+
+        .chat-msg.mine {
+            align-self: flex-end;
+            background-color: var(--brand-color);
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .chat-msg.others {
+            align-self: flex-start;
+            background-color: #eee;
+            color: #333;
+            border-bottom-left-radius: 2px;
+        }
+
+        .msg-user {
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+            display: block;
+            opacity: 0.7;
+        }
+
+        .msg-time {
+            font-size: 9px;
+            opacity: 0.5;
+            display: block;
+            text-align: right;
+            margin-top: 4px;
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 8px;
         }
 
         .form-group {
@@ -487,6 +555,12 @@
                     <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
                 </svg>
             </button>
+            <!-- НОВАЯ КНОПКА ЧАТА -->
+            <button class="action-btn" id="openChatBtn" title="Общий чат">
+                <svg viewBox="0 0 24 24">
+                    <path d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4A2,2 0 0,0 20,2M20,16H5.17L4,17.17V4H20V16Z" />
+                </svg>
+            </button>
         </div>
 
         <div class="events-container">
@@ -497,12 +571,31 @@
         </div>
     </div>
 
+    <!-- МОДАЛКА ЧАТА -->
+    <div class="modal-overlay" id="chatModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Общий чат</span>
+                <button class="close-modal" onclick="closeAllModals()">&times;</button>
+            </div>
+            <div id="chatMessages">
+                <!-- Сообщения будут тут -->
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" class="form-input" placeholder="Сообщение..." autocomplete="off">
+                <button class="action-btn" id="sendMsgBtn" style="width: 48px; min-width: 48px; height: 48px;">
+                    <svg viewBox="0 0 24 24"><path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" /></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="calendarModal">
         <div class="modal-content" id="swipeArea" style="touch-action: none;">
             <div class="modal-header">
                 <div class="calendar-nav">
                     <button class="close-modal" id="prevMonth" style="font-size: 20px;">❮</button>
-                    <span id="currentDateTitle" class="modal-title">--.--</span>
+                    <span id="currentDateTitle" class="modal-title" style="text-align: center;">--.--</span>
                     <button class="close-modal" id="nextMonth" style="font-size: 20px;">❯</button>
                 </div>
                 <button class="close-modal" id="closeCalendar">&times;</button>
@@ -511,11 +604,75 @@
         </div>
     </div>
 
+    <!-- МОДАЛКА КЕЙТЕРИНГ -->
+    <div class="modal-overlay" id="cateringModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Новое мероприятие</span>
+                <button class="close-modal" onclick="closeAllModals()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Дата мероприятия</label>
+                <input type="text" id="cateringDate" class="form-input date-mask" placeholder="ДД.ММ.ГГГГ" inputmode="numeric">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Название мероприятия</label>
+                <input type="text" class="form-input" id="cateringNameInput" placeholder="Что проводим?">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Локация</label>
+                <input type="text" class="form-input" id="cateringLocationInput" placeholder="Где проводим?">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Количество гостей</label>
+                <input type="number" class="form-input" id="cateringGuestsInput" placeholder="0" inputmode="numeric">
+            </div>
+            <button class="submit-btn" id="submitCatering">
+                <span>Добавить</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА БАНКЕТ -->
+    <div class="modal-overlay" id="banketModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">Новое мероприятие</span>
+                <button class="close-modal" onclick="closeAllModals()">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Дата мероприятия</label>
+                <input type="text" id="banketDate" class="form-input date-mask" placeholder="ДД.ММ.ГГГГ" inputmode="numeric">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Заказчик</label>
+                <input type="text" class="form-input" id="banketCustomerInput" placeholder="ФИО или Организация">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Зал</label>
+                <select class="form-select" id="banketHallSelect">
+                    <option value="" disabled selected>Выберите зал</option>
+                    <option value="ББЗ">ББЗ</option>
+                    <option value="МБЗ">МБЗ</option>
+                    <option value="Волга">Волга</option>
+                    <option value="Чайка">Чайка</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Количество гостей</label>
+                <input type="number" class="form-input" id="banketGuestsInput" placeholder="0" inputmode="numeric">
+            </div>
+            <button class="submit-btn" id="submitBanket">
+                <span>Добавить</span>
+            </button>
+        </div>
+    </div>
+
     <!-- МОДАЛКА ПОДРОБНОСТЕЙ -->
     <div class="modal-overlay" id="infoModal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="modal-title">Информация</span>
+                <span class="modal-title" id="infoModalTitle">Информация</span>
                 <button class="close-modal" onclick="closeAllModals()">&times;</button>
             </div>
             <div id="infoDetailsContainer">
@@ -555,9 +712,17 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="rootModal">
+        <div class="modal-content root-mini" style="text-align: center;">
+            <div style="font-size: 18px; font-weight: 800; padding: 10px 0; color: var(--dark-ui); text-transform: uppercase;">
+                Оно тебе зачем?
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, doc, updateDoc, serverTimestamp, query, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, updateDoc, serverTimestamp, query, onSnapshot, getDocs, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -616,6 +781,7 @@
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 subscribeToEvents();
+                subscribeToChat();
             }
         });
 
@@ -632,8 +798,9 @@
                     <div id="recordIndicator" class="record-indicator"></div>
                     <span>${user.name}</span>
                 </div>
-                <button class="logout-btn" onclick="logout()">Выход</button>
+                <button class="logout-btn" id="logoutBtn">Выход</button>
             `;
+            document.getElementById('logoutBtn').onclick = logout;
             controlsArea.style.display = 'block';
             autoLogActivity(user);
             if (globalEvents.length > 0) renderEvents(globalEvents);
@@ -682,6 +849,69 @@
             });
         }
 
+        // --- ЛОГИКА ЧАТА ---
+        function subscribeToChat() {
+            const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
+            // Ограничиваем последние 50 сообщений. Сортировка по timestamp делается в JS для простоты (Rule 2)
+            onSnapshot(chatRef, (snapshot) => {
+                let msgs = [];
+                snapshot.forEach(doc => msgs.push({id: doc.id, ...doc.data()}));
+                msgs.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
+                
+                const chatContainer = document.getElementById('chatMessages');
+                chatContainer.innerHTML = '';
+                msgs.forEach(m => {
+                    const div = document.createElement('div');
+                    const isMine = currentUser && m.userName === currentUser.name;
+                    div.className = `chat-msg ${isMine ? 'mine' : 'others'}`;
+                    
+                    const time = m.timestamp ? new Date(m.timestamp.seconds * 1000).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) : '';
+                    
+                    div.innerHTML = `
+                        ${!isMine ? `<span class="msg-user">${m.userName}</span>` : ''}
+                        <div>${m.text}</div>
+                        <span class="msg-time">${time}</span>
+                    `;
+                    chatContainer.appendChild(div);
+                });
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text || !currentUser) return;
+            
+            input.disabled = true;
+            try {
+                const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
+                await addDoc(chatRef, {
+                    userName: currentUser.name,
+                    text: text,
+                    timestamp: serverTimestamp()
+                });
+                input.value = '';
+            } catch(e) { console.error(e); }
+            finally { 
+                input.disabled = false; 
+                input.focus();
+            }
+        }
+
+        document.getElementById('openChatBtn').onclick = () => {
+            document.getElementById('chatModal').style.display = 'flex';
+            setTimeout(() => {
+                const container = document.getElementById('chatMessages');
+                container.scrollTop = container.scrollHeight;
+            }, 100);
+        };
+
+        document.getElementById('sendMsgBtn').onclick = sendChatMessage;
+        document.getElementById('chatInput').onkeypress = (e) => { if(e.key === 'Enter') sendChatMessage(); };
+
+        // --- КОНЕЦ ЛОГИКИ ЧАТА ---
+
         function renderEvents(events) {
             const today = new Date();
             const todayStr = today.toLocaleDateString('ru-RU');
@@ -704,13 +934,13 @@
                 return;
             }
 
-            const limit = filtered.slice(0, 15);
+            const limitArr = filtered.slice(0, 20);
             upcomingList.innerHTML = '';
 
             let separatorAdded = false;
-            let hasTodayEvents = limit.some(e => e.date === todayStr);
+            let hasTodayEvents = limitArr.some(e => e.date === todayStr);
 
-            limit.forEach(e => {
+            limitArr.forEach(e => {
                 if (hasTodayEvents && !separatorAdded && e.date !== todayStr) {
                     const separator = document.createElement('div');
                     separator.className = 'date-separator';
@@ -776,7 +1006,14 @@
 
         function openInfoModal(event) {
             const container = document.getElementById('infoDetailsContainer');
+            const titleEl = document.getElementById('infoModalTitle');
             let content = '';
+
+            if (event.type === 'Кейтеринг') {
+                titleEl.innerText = event.eventName || 'Кейтеринг';
+            } else {
+                titleEl.innerText = event.customer || 'Банкет';
+            }
 
             if (currentUser && currentUser.type === 'ROOT') {
                 content += `
@@ -787,35 +1024,12 @@
                 `;
             }
 
-            content += `
-                <div class="detail-row">
-                    <span class="detail-label">Дата</span>
-                    <span class="detail-value">${event.date}</span>
-                </div>
-            `;
+            content += `<div class="detail-row"><span class="detail-label">Дата</span><span class="detail-value">${event.date}</span></div>`;
 
             if (event.type === 'Кейтеринг') {
-                content += `
-                    <div class="detail-row">
-                        <span class="detail-label">Название</span>
-                        <span class="detail-value">${event.eventName || '-'}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Локация</span>
-                        <span class="detail-value">${event.location || '-'}</span>
-                    </div>
-                `;
+                content += `<div class="detail-row"><span class="detail-label">Локация</span><span class="detail-value">${event.location || '-'}</span></div>`;
             } else {
-                content += `
-                    <div class="detail-row">
-                        <span class="detail-label">Заказчик</span>
-                        <span class="detail-value">${event.customer || '-'}</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">Зал</span>
-                        <span class="detail-value">${event.hall || '-'}</span>
-                    </div>
-                `;
+                content += `<div class="detail-row"><span class="detail-label">Зал</span><span class="detail-value">${event.hall || '-'}</span></div>`;
             }
 
             content += `
@@ -851,9 +1065,7 @@
                 infoInput.value = event.eventName || '';
                 labelExtra.innerText = 'Локация';
                 const locInput = document.createElement('input');
-                locInput.type = 'text';
-                locInput.className = 'form-input';
-                locInput.id = 'editExtraInput';
+                locInput.type = 'text'; locInput.className = 'form-input'; locInput.id = 'editExtraInput';
                 locInput.value = event.location || '';
                 extraContainer.appendChild(locInput);
             } else {
@@ -861,12 +1073,9 @@
                 infoInput.value = event.customer || '';
                 labelExtra.innerText = 'Зал';
                 const hallSelect = document.createElement('select');
-                hallSelect.className = 'form-select';
-                hallSelect.id = 'editExtraInput';
+                hallSelect.className = 'form-select'; hallSelect.id = 'editExtraInput';
                 ['ББЗ', 'МБЗ', 'Волга', 'Чайка'].forEach(h => {
-                    const opt = document.createElement('option');
-                    opt.value = h;
-                    opt.innerText = h;
+                    const opt = document.createElement('option'); opt.value = h; opt.innerText = h;
                     if (event.hall === h) opt.selected = true;
                     hallSelect.appendChild(opt);
                 });
@@ -921,9 +1130,7 @@
                     formattedValue = value.slice(0, 2);
                     if (value.length > 2) {
                         formattedValue += '.' + value.slice(2, 4);
-                        if (value.length > 4) {
-                            formattedValue += '.' + value.slice(4, 8);
-                        }
+                        if (value.length > 4) formattedValue += '.' + value.slice(4, 8);
                     }
                 }
                 e.target.value = formattedValue;
@@ -957,8 +1164,7 @@
             const firstDay = new Date(y, m, 1).getDay();
             const offset = firstDay === 0 ? 6 : firstDay - 1;
             for (let i = 0; i < offset; i++) {
-                const empty = document.createElement('div');
-                empty.style.aspectRatio = "1/1";
+                const empty = document.createElement('div'); empty.style.aspectRatio = "1/1";
                 calGrid.appendChild(empty);
             }
 
@@ -968,9 +1174,7 @@
                 if (currentUser && currentUser.type !== "ROOT" && ev.type !== currentUser.type) return;
                 const parts = ev.date.split('.');
                 if (parts.length === 3) {
-                    const dVal = parseInt(parts[0]);
-                    const mVal = parseInt(parts[1]) - 1;
-                    const yVal = parseInt(parts[2]);
+                    const dVal = parseInt(parts[0]), mVal = parseInt(parts[1]) - 1, yVal = parseInt(parts[2]);
                     if (mVal === m && yVal === y) eventDates.add(dVal);
                 }
             });
@@ -997,15 +1201,66 @@
         }, {passive:true});
 
         document.getElementById('openCalendar').onclick = () => {
-            displayedMonth = new Date().getMonth();
-            displayedYear = new Date().getFullYear();
+            displayedMonth = new Date().getMonth(); displayedYear = new Date().getFullYear();
             buildCalendar(displayedMonth, displayedYear);
             document.getElementById('calendarModal').style.display = 'flex';
+        };
+
+        document.getElementById('addEntryBtn').onclick = () => {
+            if (!currentUser) return;
+            if (currentUser.type === "ROOT") {
+                document.getElementById('rootModal').style.display = 'flex';
+                return;
+            }
+            const todayStr = new Date().toLocaleDateString('ru-RU');
+            if (currentUser.type === "Кейтеринг") {
+                document.getElementById('cateringDate').value = todayStr;
+                document.getElementById('cateringModal').style.display = 'flex';
+            } else if (currentUser.type === "Банкет") {
+                document.getElementById('banketDate').value = todayStr;
+                document.getElementById('banketModal').style.display = 'flex';
+            }
+        };
+
+        async function saveData(type, data) {
+            if (!auth.currentUser) return;
+            const btnId = type === 'Кейтеринг' ? 'submitCatering' : 'submitBanket';
+            const btn = document.getElementById(btnId);
+            btn.disabled = true; btn.innerText = "Сохранение...";
+            try {
+                const eventsRef = collection(db, 'artifacts', appId, 'public', 'data', 'events');
+                await addDoc(eventsRef, { ...data, type: type, createdBy: currentUser.name, createdAt: serverTimestamp() });
+                closeAllModals();
+            } catch (e) { console.error(e); } finally {
+                btn.disabled = false; btn.innerText = "Добавить";
+            }
+        }
+
+        document.getElementById('submitCatering').onclick = () => {
+            const date = document.getElementById('cateringDate').value;
+            const name = document.getElementById('cateringNameInput').value;
+            const location = document.getElementById('cateringLocationInput').value;
+            const guests = document.getElementById('cateringGuestsInput').value;
+            if (!date || !name) return;
+            saveData('Кейтеринг', { date, eventName: name, location: location, guests: guests });
+        };
+
+        document.getElementById('submitBanket').onclick = () => {
+            const date = document.getElementById('banketDate').value;
+            const customer = document.getElementById('banketCustomerInput').value;
+            const hall = document.getElementById('banketHallSelect').value;
+            const guests = document.getElementById('banketGuestsInput').value;
+            if (!date || !customer || !hall) return;
+            saveData('Банкет', { date, customer, hall: hall, guests: guests });
         };
 
         window.closeAllModals = function() {
             document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
             document.querySelectorAll('.form-input').forEach(i => i.value = '');
+            const hallSelect = document.getElementById('banketHallSelect');
+            if(hallSelect) hallSelect.selectedIndex = 0;
+            const infoTitle = document.getElementById('infoModalTitle');
+            if(infoTitle) infoTitle.innerText = "Информация";
         };
 
         document.getElementById('closeCalendar').onclick = closeAllModals;
