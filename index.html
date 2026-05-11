@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Админские Мутки</title>
     <meta name="theme-color" content="#604539">
     <style>
@@ -284,10 +284,9 @@
             backdrop-filter: blur(2px);
             padding: 12px;
             box-sizing: border-box;
-            overflow-y: hidden; /* Чат сам будет скроллиться */
+            overflow-y: hidden;
         }
 
-        /* Общая структура модалок */
         .modal-content {
             background: white;
             border: 1px solid var(--dark-ui);
@@ -301,14 +300,21 @@
             margin-top: 60px;
         }
 
-        /* Специфические стили для модалки чата (Full-ish screen) */
+        /* ЧАТ */
         .modal-content.full-chat {
             max-width: none;
             margin-top: 0;
-            height: calc(100% - 24px); /* Отступы по 12px сверху и снизу */
+            height: calc(100% - 24px); 
             display: flex;
             flex-direction: column;
             top: 12px;
+            transition: height 0.2s ease-out;
+        }
+
+        /* Класс для сокращенного окна чата при фокусе */
+        .modal-content.full-chat.focused {
+             height: auto;
+             max-height: calc(100% - 24px);
         }
 
         .modal-content.root-mini {
@@ -630,7 +636,7 @@
 
     <!-- МОДАЛКА ЧАТА -->
     <div class="modal-overlay" id="chatModal">
-        <div class="modal-content full-chat">
+        <div class="modal-content full-chat" id="chatModalContent">
             <div class="modal-header">
                 <span class="modal-title">Чат</span>
                 <button id="clearChatBtn" class="clear-chat-btn">Очистить</button>
@@ -648,7 +654,7 @@
         </div>
     </div>
 
-    <!-- Остальные модалки -->
+    <!-- Календарь -->
     <div class="modal-overlay" id="calendarModal">
         <div class="modal-content" id="swipeArea" style="touch-action: none;">
             <div class="modal-header">
@@ -663,6 +669,7 @@
         </div>
     </div>
 
+    <!-- Кейтеринг -->
     <div class="modal-overlay" id="cateringModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -691,6 +698,7 @@
         </div>
     </div>
 
+    <!-- Банкет -->
     <div class="modal-overlay" id="banketModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -725,6 +733,7 @@
         </div>
     </div>
 
+    <!-- Инфо -->
     <div class="modal-overlay" id="infoModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -737,6 +746,7 @@
         </div>
     </div>
 
+    <!-- Редактирование -->
     <div class="modal-overlay" id="editModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -817,6 +827,8 @@
         const swipeArea = document.getElementById('swipeArea');
         const upcomingList = document.getElementById('upcomingEventsList');
         const chatNotification = document.getElementById('chatNotification');
+        const chatInput = document.getElementById('chatInput');
+        const chatModalContent = document.getElementById('chatModalContent');
 
         let currentUser = null;
         let globalEvents = [];
@@ -950,11 +962,10 @@
         }
 
         async function sendChatMessage() {
-            const input = document.getElementById('chatInput');
-            const text = input.value.trim();
+            const text = chatInput.value.trim();
             if (!text || !currentUser) return;
             
-            input.disabled = true;
+            chatInput.disabled = true;
             try {
                 const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
                 await addDoc(chatRef, {
@@ -962,11 +973,11 @@
                     text: text,
                     timestamp: serverTimestamp()
                 });
-                input.value = '';
+                chatInput.value = '';
             } catch(e) { console.error(e); }
             finally { 
-                input.disabled = false; 
-                input.focus();
+                chatInput.disabled = false; 
+                chatInput.focus();
             }
         }
 
@@ -982,6 +993,19 @@
             } catch (e) { console.error("Error clearing chat:", e); }
         }
 
+        // Логика сокращения окна при фокусе
+        chatInput.addEventListener('focus', () => {
+            chatModalContent.classList.add('focused');
+            setTimeout(() => {
+                const container = document.getElementById('chatMessages');
+                container.scrollTop = container.scrollHeight;
+            }, 100);
+        });
+
+        chatInput.addEventListener('blur', () => {
+            chatModalContent.classList.remove('focused');
+        });
+
         document.getElementById('openChatBtn').onclick = () => {
             isChatOpen = true;
             chatNotification.style.display = 'none';
@@ -995,7 +1019,7 @@
         };
 
         document.getElementById('sendMsgBtn').onclick = sendChatMessage;
-        document.getElementById('chatInput').onkeypress = (e) => { if(e.key === 'Enter') sendChatMessage(); };
+        chatInput.onkeypress = (e) => { if(e.key === 'Enter') sendChatMessage(); };
         document.getElementById('clearChatBtn').onclick = clearChatHistory;
 
         function renderEvents(events) {
@@ -1347,6 +1371,8 @@
             if(hallSelect) hallSelect.selectedIndex = 0;
             const infoTitle = document.getElementById('infoModalTitle');
             if(infoTitle) infoTitle.innerText = "Информация";
+            
+            chatModalContent.classList.remove('focused');
             isChatOpen = false;
         };
 
