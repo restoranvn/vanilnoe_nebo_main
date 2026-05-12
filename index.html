@@ -364,6 +364,28 @@
             line-height: 1.2;
         }
 
+        .modal-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .delete-icon-btn {
+            background: none;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .delete-icon-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--error);
+        }
+
         .close-modal {
             background: none;
             border: none;
@@ -530,6 +552,10 @@
             gap: 10px;
         }
 
+        .submit-btn.danger {
+            background-color: var(--error);
+        }
+
         .submit-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -685,7 +711,7 @@
                 <div class="calendar-nav">
                     <button class="close-modal" id="prevMonth" style="font-size: 20px;">❮</button>
                     <span id="currentDateTitle" class="modal-title" style="text-align: center;">--.--</span>
-                    <button class="close-modal" id="prevMonth" style="display:none;"></button> <!-- Dummy to keep nav centered if needed -->
+                    <button class="close-modal" id="prevMonth" style="display:none;"></button>
                     <button class="close-modal" id="nextMonth" style="font-size: 20px;">❯</button>
                 </div>
                 <button class="close-modal" id="closeCalendar">&times;</button>
@@ -763,9 +789,29 @@
         <div class="modal-content">
             <div class="modal-header">
                 <span class="modal-title" id="infoModalTitle">Информация</span>
-                <button class="close-modal" onclick="closeAllModals()">&times;</button>
+                <div class="modal-header-actions">
+                    <button class="delete-icon-btn" id="deleteEntryIconBtn" style="display: none;" title="Удалить">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19V4M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
+                        </svg>
+                    </button>
+                    <button class="close-modal" onclick="closeAllModals()">&times;</button>
+                </div>
             </div>
             <div id="infoDetailsContainer"></div>
+        </div>
+    </div>
+
+    <!-- Модалка Подтверждения Удаления -->
+    <div class="modal-overlay" id="confirmDeleteModal">
+        <div class="modal-content root-mini" style="text-align: center;">
+            <div style="font-size: 16px; font-weight: 800; padding: 10px 0; color: var(--dark-ui); text-transform: uppercase;">
+                Удалить запись?
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="submit-btn" style="background-color: #ccc; color: #333;" onclick="document.getElementById('confirmDeleteModal').style.display='none'">Отмена</button>
+                <button class="submit-btn danger" id="confirmDeleteBtn">Удалить</button>
+            </div>
         </div>
     </div>
 
@@ -982,27 +1028,20 @@
                 if (!s) return 0;
                 const parts = s.split('.').map(Number);
                 if (parts.length < 3) return 0;
-                // parts[0] - day, parts[1] - month, parts[2] - year
                 return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
             };
 
             let filtered = [...events];
 
-            // 1. Фильтр по типу пользователя
             if (currentUser && currentUser.type !== "ROOT") {
                 filtered = filtered.filter(e => e.type === currentUser.type);
             }
 
-            // 2. Разделение на Архив и Предстоящие
             if (showArchive) {
-                // Архив: всё, что раньше СЕГОДНЯШНЕГО дня
                 filtered = filtered.filter(e => parseDateToTime(e.date) < todayTime);
-                // СОРТИРОВКА АРХИВА: От самых новых (недавних прошедших) к старым (глубокое прошлое)
                 filtered.sort((a, b) => parseDateToTime(b.date) - parseDateToTime(a.date));
             } else {
-                // Предстоящие: всё, что СЕГОДНЯ и ПОЗЖЕ
                 filtered = filtered.filter(e => parseDateToTime(e.date) >= todayTime);
-                // СОРТИРОВКА ПРЕДСТОЯЩИХ: От ближайших (сегодня/завтра) к далеким планам
                 filtered.sort((a, b) => parseDateToTime(a.date) - parseDateToTime(b.date));
             }
 
@@ -1011,16 +1050,13 @@
                 return;
             }
 
-            // Лимит на отображение
             const limitArr = filtered.slice(0, 100);
             upcomingList.innerHTML = '';
 
             let separatorAdded = false;
-            // Есть ли мероприятия прямо на сегодня (только для режима "Предстоящие")
             let hasTodayEvents = !showArchive && limitArr.some(e => e.date === todayStr);
 
             limitArr.forEach(e => {
-                // Добавляем разделитель в предстоящих после сегодняшних дел
                 if (hasTodayEvents && !separatorAdded && e.date !== todayStr) {
                     const separator = document.createElement('div');
                     separator.className = 'date-separator';
@@ -1056,7 +1092,6 @@
                 upcomingList.appendChild(item);
                 const actionContainer = document.getElementById(`actions-${e.id}`);
 
-                // Кнопка ИНФО
                 const infoBtn = document.createElement('button');
                 infoBtn.className = 'info-icon-btn';
                 infoBtn.onclick = () => openInfoModal(e);
@@ -1067,7 +1102,6 @@
                 `;
                 actionContainer.appendChild(infoBtn);
 
-                // Кнопка РЕДАКТИРОВАНИЯ
                 if (currentUser) {
                     const editBtn = document.createElement('button');
                     editBtn.className = 'edit-icon-btn';
@@ -1171,12 +1205,37 @@
         function openInfoModal(event) {
             const container = document.getElementById('infoDetailsContainer');
             const titleEl = document.getElementById('infoModalTitle');
+            const deleteIconBtn = document.getElementById('deleteEntryIconBtn');
             let content = '';
+            
             if (event.type === 'Кейтеринг') {
                 titleEl.innerText = event.eventName || 'Кейтеринг';
             } else {
                 titleEl.innerText = event.customer || 'Банкет';
             }
+
+            // Условие отображения кнопки удаления: ROOT или создатель записи
+            if (currentUser && (currentUser.type === 'ROOT' || event.createdBy === currentUser.name)) {
+                deleteIconBtn.style.display = 'flex';
+                deleteIconBtn.onclick = () => {
+                    const confirmModal = document.getElementById('confirmDeleteModal');
+                    const confirmBtn = document.getElementById('confirmDeleteBtn');
+                    confirmModal.style.display = 'flex';
+                    confirmBtn.onclick = async () => {
+                        confirmBtn.disabled = true; confirmBtn.innerText = "Удаление...";
+                        try {
+                            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'events', event.id));
+                            closeAllModals();
+                            confirmModal.style.display = 'none';
+                        } catch (e) { console.error(e); } finally {
+                            confirmBtn.disabled = false; confirmBtn.innerText = "Удалить";
+                        }
+                    };
+                };
+            } else {
+                deleteIconBtn.style.display = 'none';
+            }
+
             if (currentUser && currentUser.type === 'ROOT') {
                 content += `<div class="detail-row"><span class="detail-label">Тип</span><span class="detail-value">${event.type}</span></div>`;
             }
