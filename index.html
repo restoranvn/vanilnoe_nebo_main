@@ -685,6 +685,7 @@
                 <div class="calendar-nav">
                     <button class="close-modal" id="prevMonth" style="font-size: 20px;">❮</button>
                     <span id="currentDateTitle" class="modal-title" style="text-align: center;">--.--</span>
+                    <button class="close-modal" id="prevMonth" style="display:none;"></button> <!-- Dummy to keep nav centered if needed -->
                     <button class="close-modal" id="nextMonth" style="font-size: 20px;">❯</button>
                 </div>
                 <button class="close-modal" id="closeCalendar">&times;</button>
@@ -977,29 +978,32 @@
             const todayStr = today.toLocaleDateString('ru-RU');
             const todayTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
 
-            const parseDate = (s) => {
+            const parseDateToTime = (s) => {
                 if (!s) return 0;
                 const parts = s.split('.').map(Number);
                 if (parts.length < 3) return 0;
+                // parts[0] - day, parts[1] - month, parts[2] - year
                 return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
             };
 
-            let filtered = events;
+            let filtered = [...events];
 
-            // Сначала фильтруем по типу пользователя
+            // 1. Фильтр по типу пользователя
             if (currentUser && currentUser.type !== "ROOT") {
                 filtered = filtered.filter(e => e.type === currentUser.type);
             }
 
-            // Затем по времени (предстоящие или архив)
+            // 2. Разделение на Архив и Предстоящие
             if (showArchive) {
-                filtered = filtered.filter(e => parseDate(e.date) < todayTime);
-                // Архив сортируем от новых к старым
-                filtered.sort((a, b) => parseDate(b.date) - parseDate(a.date));
+                // Архив: всё, что раньше СЕГОДНЯШНЕГО дня
+                filtered = filtered.filter(e => parseDateToTime(e.date) < todayTime);
+                // СОРТИРОВКА АРХИВА: От самых новых (недавних прошедших) к старым (глубокое прошлое)
+                filtered.sort((a, b) => parseDateToTime(b.date) - parseDateToTime(a.date));
             } else {
-                filtered = filtered.filter(e => parseDate(e.date) >= todayTime);
-                // Предстоящие от ближайших к дальним
-                filtered.sort((a, b) => parseDate(a.date) - parseDate(b.date));
+                // Предстоящие: всё, что СЕГОДНЯ и ПОЗЖЕ
+                filtered = filtered.filter(e => parseDateToTime(e.date) >= todayTime);
+                // СОРТИРОВКА ПРЕДСТОЯЩИХ: От ближайших (сегодня/завтра) к далеким планам
+                filtered.sort((a, b) => parseDateToTime(a.date) - parseDateToTime(b.date));
             }
 
             if (filtered.length === 0) {
@@ -1007,13 +1011,16 @@
                 return;
             }
 
-            const limitArr = filtered.slice(0, 50);
+            // Лимит на отображение
+            const limitArr = filtered.slice(0, 100);
             upcomingList.innerHTML = '';
 
             let separatorAdded = false;
+            // Есть ли мероприятия прямо на сегодня (только для режима "Предстоящие")
             let hasTodayEvents = !showArchive && limitArr.some(e => e.date === todayStr);
 
             limitArr.forEach(e => {
+                // Добавляем разделитель в предстоящих после сегодняшних дел
                 if (hasTodayEvents && !separatorAdded && e.date !== todayStr) {
                     const separator = document.createElement('div');
                     separator.className = 'date-separator';
@@ -1049,6 +1056,7 @@
                 upcomingList.appendChild(item);
                 const actionContainer = document.getElementById(`actions-${e.id}`);
 
+                // Кнопка ИНФО
                 const infoBtn = document.createElement('button');
                 infoBtn.className = 'info-icon-btn';
                 infoBtn.onclick = () => openInfoModal(e);
@@ -1059,6 +1067,7 @@
                 `;
                 actionContainer.appendChild(infoBtn);
 
+                // Кнопка РЕДАКТИРОВАНИЯ
                 if (currentUser) {
                     const editBtn = document.createElement('button');
                     editBtn.className = 'edit-icon-btn';
