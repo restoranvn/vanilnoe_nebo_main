@@ -179,15 +179,37 @@
             margin-top: 12px;
         }
 
+        .events-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(31, 23, 19, 0.2);
+            padding-bottom: 4px;
+        }
+
         .events-title {
             font-size: 12px;
             font-weight: 900;
             color: #1F1713;
-            margin-bottom: 10px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            border-bottom: 1px solid rgba(31, 23, 19, 0.2);
-            padding-bottom: 4px;
+        }
+
+        .archive-toggle {
+            font-size: 10px;
+            font-weight: 800;
+            background: var(--dark-ui);
+            color: var(--logout-text);
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .archive-toggle.active {
+            background: var(--error);
         }
 
         .event-list {
@@ -308,16 +330,15 @@
             overflow-y: auto;
         }
 
-        /* Специфические стили для чата: Фиксация верха и адаптивная высота */
         .modal-content.full-chat {
             max-width: none;
             height: calc(100% - 24px); 
             display: flex;
             flex-direction: column;
-            align-self: flex-start; /* Фиксируем по верхнему краю */
+            align-self: flex-start;
             top: 0;
-            max-height: none; /* Перебиваем общее правило */
-            overflow: hidden; /* Внутренние элементы будут скроллиться */
+            max-height: none;
+            overflow: hidden;
         }
 
         .modal-content.root-mini {
@@ -629,7 +650,10 @@
         </div>
 
         <div class="events-container">
-            <div class="events-title">Предстоящие мероприятия</div>
+            <div class="events-header">
+                <div class="events-title" id="eventsContainerTitle">Предстоящие мероприятия</div>
+                <button class="archive-toggle" id="archiveToggleBtn">Архив</button>
+            </div>
             <div id="upcomingEventsList" class="event-list">
                 <div class="no-events">Загрузка данных...</div>
             </div>
@@ -654,7 +678,7 @@
         </div>
     </div>
 
-    <!-- Остальные модалки -->
+    <!-- Календарь -->
     <div class="modal-overlay" id="calendarModal">
         <div class="modal-content" id="swipeArea" style="touch-action: none;">
             <div class="modal-header">
@@ -669,6 +693,7 @@
         </div>
     </div>
 
+    <!-- Модалка Кейтеринга -->
     <div class="modal-overlay" id="cateringModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -697,6 +722,7 @@
         </div>
     </div>
 
+    <!-- Модалка Банкета -->
     <div class="modal-overlay" id="banketModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -731,6 +757,7 @@
         </div>
     </div>
 
+    <!-- Модалка Инфо -->
     <div class="modal-overlay" id="infoModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -741,6 +768,7 @@
         </div>
     </div>
 
+    <!-- Модалка Редактирования -->
     <div class="modal-overlay" id="editModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -771,6 +799,7 @@
         </div>
     </div>
 
+    <!-- Модалка ROOT -->
     <div class="modal-overlay" id="rootModal">
         <div class="modal-content root-mini" style="text-align: center;">
             <div style="font-size: 18px; font-weight: 800; padding: 10px 0; color: var(--dark-ui); text-transform: uppercase;">
@@ -821,14 +850,16 @@
         const swipeArea = document.getElementById('swipeArea');
         const upcomingList = document.getElementById('upcomingEventsList');
         const chatNotification = document.getElementById('chatNotification');
+        const archiveToggleBtn = document.getElementById('archiveToggleBtn');
+        const eventsContainerTitle = document.getElementById('eventsContainerTitle');
 
         let currentUser = null;
         let globalEvents = [];
         let displayedMonth = new Date().getMonth();
         let displayedYear = new Date().getFullYear();
         let isChatOpen = false;
+        let showArchive = false;
 
-        // --- Управление высотой вьюпорта для мобилок ---
         const visualViewport = window.visualViewport;
         function updateViewport() {
             if (!visualViewport) return;
@@ -836,18 +867,11 @@
             const chatContent = document.getElementById('chatContent');
             
             if (isChatOpen) {
-                // При появлении клавиатуры высота вьюпорта уменьшается. 
-                // Мы устанавливаем высоту модалки равной высоте видимой области.
                 const height = visualViewport.height;
                 const offset = visualViewport.offsetTop;
-                
                 chatModal.style.height = `${height}px`;
                 chatModal.style.top = `${offset}px`;
-                
-                // Чтобы шапка оставалась сверху, просто даем контенту занять 100%
                 chatContent.style.height = `calc(100% - 24px)`;
-                
-                // Автоскролл к последнему сообщению
                 const msgContainer = document.getElementById('chatMessages');
                 msgContainer.scrollTop = msgContainer.scrollHeight;
             } else {
@@ -930,15 +954,6 @@
                 snapshot.forEach(doc => {
                     events.push({ id: doc.id, ...doc.data() });
                 });
-
-                const parseDate = (s) => {
-                    if (!s) return 0;
-                    const parts = s.split('.').map(Number);
-                    if (parts.length < 3) return 0;
-                    return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
-                };
-
-                events.sort((a, b) => parseDate(a.date) - parseDate(b.date));
                 globalEvents = events;
                 renderEvents(events);
                 if (document.getElementById('calendarModal').style.display === 'flex') {
@@ -949,92 +964,13 @@
             });
         }
 
-        function subscribeToChat() {
-            const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
-            onSnapshot(chatRef, (snapshot) => {
-                let msgs = [];
-                snapshot.forEach(doc => msgs.push({id: doc.id, ...doc.data()}));
-                msgs.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
-                
-                if (!isChatOpen && msgs.length > 0) {
-                    const lastReadTime = localStorage.getItem('chat_last_read') || 0;
-                    const lastMsgTime = msgs[msgs.length - 1].timestamp?.seconds || 0;
-                    if (lastMsgTime > lastReadTime) {
-                        chatNotification.style.display = 'block';
-                    }
-                }
-
-                const chatContainer = document.getElementById('chatMessages');
-                chatContainer.innerHTML = '';
-                msgs.forEach(m => {
-                    const div = document.createElement('div');
-                    const isMine = currentUser && m.userName === currentUser.name;
-                    div.className = `chat-msg ${isMine ? 'mine' : 'others'}`;
-                    
-                    const time = m.timestamp ? new Date(m.timestamp.seconds * 1000).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) : '';
-                    
-                    div.innerHTML = `
-                        <div class="msg-header">
-                            <span class="msg-user">${m.userName}</span>
-                            <span class="msg-time">${time}</span>
-                        </div>
-                        <div>${m.text}</div>
-                    `;
-                    chatContainer.appendChild(div);
-                });
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }, (err) => console.error(err));
-        }
-
-        async function sendChatMessage() {
-            const input = document.getElementById('chatInput');
-            const text = input.value.trim();
-            if (!text || !currentUser) return;
-            
-            input.disabled = true;
-            try {
-                const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
-                await addDoc(chatRef, {
-                    userName: currentUser.name,
-                    text: text,
-                    timestamp: serverTimestamp()
-                });
-                input.value = '';
-            } catch(e) { console.error(e); }
-            finally { 
-                input.disabled = false; 
-                input.focus();
-            }
-        }
-
-        async function clearChatHistory() {
-            if (!currentUser || currentUser.type !== 'ROOT') return;
-            if (!confirm('Вы уверены, что хотите очистить историю чата?')) return;
-
-            try {
-                const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
-                const snapshot = await getDocs(chatRef);
-                const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'chat_messages', d.id)));
-                await Promise.all(deletePromises);
-            } catch (e) { console.error("Error clearing chat:", e); }
-        }
-
-        document.getElementById('openChatBtn').onclick = () => {
-            isChatOpen = true;
-            chatNotification.style.display = 'none';
-            localStorage.setItem('chat_last_read', Math.floor(Date.now() / 1000));
-            
-            document.getElementById('chatModal').style.display = 'flex';
-            updateViewport();
-            setTimeout(() => {
-                const container = document.getElementById('chatMessages');
-                container.scrollTop = container.scrollHeight;
-            }, 100);
+        archiveToggleBtn.onclick = () => {
+            showArchive = !showArchive;
+            archiveToggleBtn.innerText = showArchive ? "Назад" : "Архив";
+            archiveToggleBtn.classList.toggle('active', showArchive);
+            eventsContainerTitle.innerText = showArchive ? "Прошедшие мероприятия" : "Предстоящие мероприятия";
+            renderEvents(globalEvents);
         };
-
-        document.getElementById('sendMsgBtn').onclick = sendChatMessage;
-        document.getElementById('chatInput').onkeypress = (e) => { if(e.key === 'Enter') sendChatMessage(); };
-        document.getElementById('clearChatBtn').onclick = clearChatHistory;
 
         function renderEvents(events) {
             const today = new Date();
@@ -1048,21 +984,34 @@
                 return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
             };
 
-            let filtered = events.filter(e => parseDate(e.date) >= todayTime);
+            let filtered = events;
+
+            // Сначала фильтруем по типу пользователя
             if (currentUser && currentUser.type !== "ROOT") {
                 filtered = filtered.filter(e => e.type === currentUser.type);
             }
 
+            // Затем по времени (предстоящие или архив)
+            if (showArchive) {
+                filtered = filtered.filter(e => parseDate(e.date) < todayTime);
+                // Архив сортируем от новых к старым
+                filtered.sort((a, b) => parseDate(b.date) - parseDate(a.date));
+            } else {
+                filtered = filtered.filter(e => parseDate(e.date) >= todayTime);
+                // Предстоящие от ближайших к дальним
+                filtered.sort((a, b) => parseDate(a.date) - parseDate(b.date));
+            }
+
             if (filtered.length === 0) {
-                upcomingList.innerHTML = `<div class="no-events">Мероприятий пока нет</div>`;
+                upcomingList.innerHTML = `<div class="no-events">${showArchive ? 'Архив пуст' : 'Мероприятий пока нет'}</div>`;
                 return;
             }
 
-            const limitArr = filtered.slice(0, 20);
+            const limitArr = filtered.slice(0, 50);
             upcomingList.innerHTML = '';
 
             let separatorAdded = false;
-            let hasTodayEvents = limitArr.some(e => e.date === todayStr);
+            let hasTodayEvents = !showArchive && limitArr.some(e => e.date === todayStr);
 
             limitArr.forEach(e => {
                 if (hasTodayEvents && !separatorAdded && e.date !== todayStr) {
@@ -1128,34 +1077,106 @@
             });
         }
 
+        function subscribeToChat() {
+            const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
+            onSnapshot(chatRef, (snapshot) => {
+                let msgs = [];
+                snapshot.forEach(doc => msgs.push({id: doc.id, ...doc.data()}));
+                msgs.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
+                
+                if (!isChatOpen && msgs.length > 0) {
+                    const lastReadTime = localStorage.getItem('chat_last_read') || 0;
+                    const lastMsgTime = msgs[msgs.length - 1].timestamp?.seconds || 0;
+                    if (lastMsgTime > lastReadTime) {
+                        chatNotification.style.display = 'block';
+                    }
+                }
+
+                const chatContainer = document.getElementById('chatMessages');
+                chatContainer.innerHTML = '';
+                msgs.forEach(m => {
+                    const div = document.createElement('div');
+                    const isMine = currentUser && m.userName === currentUser.name;
+                    div.className = `chat-msg ${isMine ? 'mine' : 'others'}`;
+                    const time = m.timestamp ? new Date(m.timestamp.seconds * 1000).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) : '';
+                    div.innerHTML = `
+                        <div class="msg-header">
+                            <span class="msg-user">${m.userName}</span>
+                            <span class="msg-time">${time}</span>
+                        </div>
+                        <div>${m.text}</div>
+                    `;
+                    chatContainer.appendChild(div);
+                });
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }, (err) => console.error(err));
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text || !currentUser) return;
+            input.disabled = true;
+            try {
+                const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
+                await addDoc(chatRef, {
+                    userName: currentUser.name,
+                    text: text,
+                    timestamp: serverTimestamp()
+                });
+                input.value = '';
+            } catch(e) { console.error(e); }
+            finally { 
+                input.disabled = false; 
+                input.focus();
+            }
+        }
+
+        async function clearChatHistory() {
+            if (!currentUser || currentUser.type !== 'ROOT') return;
+            if (!confirm('Вы уверены, что хотите очистить историю чата?')) return;
+            try {
+                const chatRef = collection(db, 'artifacts', appId, 'public', 'data', 'chat_messages');
+                const snapshot = await getDocs(chatRef);
+                const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'chat_messages', d.id)));
+                await Promise.all(deletePromises);
+            } catch (e) { console.error("Error clearing chat:", e); }
+        }
+
+        document.getElementById('openChatBtn').onclick = () => {
+            isChatOpen = true;
+            chatNotification.style.display = 'none';
+            localStorage.setItem('chat_last_read', Math.floor(Date.now() / 1000));
+            document.getElementById('chatModal').style.display = 'flex';
+            updateViewport();
+            setTimeout(() => {
+                const container = document.getElementById('chatMessages');
+                container.scrollTop = container.scrollHeight;
+            }, 100);
+        };
+
+        document.getElementById('sendMsgBtn').onclick = sendChatMessage;
+        document.getElementById('chatInput').onkeypress = (e) => { if(e.key === 'Enter') sendChatMessage(); };
+        document.getElementById('clearChatBtn').onclick = clearChatHistory;
+
         function openInfoModal(event) {
             const container = document.getElementById('infoDetailsContainer');
             const titleEl = document.getElementById('infoModalTitle');
             let content = '';
-
             if (event.type === 'Кейтеринг') {
                 titleEl.innerText = event.eventName || 'Кейтеринг';
             } else {
                 titleEl.innerText = event.customer || 'Банкет';
             }
-
             if (currentUser && currentUser.type === 'ROOT') {
-                content += `
-                    <div class="detail-row">
-                        <span class="detail-label">Тип</span>
-                        <span class="detail-value">${event.type}</span>
-                    </div>
-                `;
+                content += `<div class="detail-row"><span class="detail-label">Тип</span><span class="detail-value">${event.type}</span></div>`;
             }
-
             content += `<div class="detail-row"><span class="detail-label">Дата</span><span class="detail-value">${event.date}</span></div>`;
-
             if (event.type === 'Кейтеринг') {
                 content += `<div class="detail-row"><span class="detail-label">Локация</span><span class="detail-value">${event.location || '-'}</span></div>`;
             } else {
                 content += `<div class="detail-row"><span class="detail-label">Зал</span><span class="detail-value">${event.hall || '-'}</span></div>`;
             }
-
             content += `
                 <div class="detail-row">
                     <span class="detail-label">Гости</span>
@@ -1163,10 +1184,9 @@
                 </div>
                 <div class="detail-row" style="opacity: 0.5">
                     <span class="detail-label">Создано</span>
-                    <span class="detail-value" style="font-size: 11px">${event.createdBy || 'Система'}</span>
+                    <span class="detail-value" style="font-size: 11px">${event.createdBy || 'Система'} ${event.createdAt ? new Date(event.createdAt.seconds * 1000).toLocaleString('ru-RU') : ''}</span>
                 </div>
             `;
-
             container.innerHTML = content;
             document.getElementById('infoModal').style.display = 'flex';
         }
@@ -1176,14 +1196,11 @@
             document.getElementById('editType').value = event.type;
             document.getElementById('editDate').value = event.date;
             document.getElementById('editGuestsInput').value = event.guests || '';
-            
             const infoInput = document.getElementById('editInfoInput');
             const labelInfo = document.getElementById('editLabelInfo');
             const labelExtra = document.getElementById('editLabelExtra');
             const extraContainer = document.getElementById('editExtraContainer');
-            
             extraContainer.innerHTML = '';
-
             if (event.type === 'Кейтеринг') {
                 labelInfo.innerText = 'Название мероприятия';
                 infoInput.value = event.eventName || '';
@@ -1215,11 +1232,9 @@
             const info = document.getElementById('editInfoInput').value;
             const extra = document.getElementById('editExtraInput').value;
             const guests = document.getElementById('editGuestsInput').value;
-
             if (!date || !info) return;
             const btn = document.getElementById('saveEditBtn');
-            btn.disabled = true;
-            btn.innerText = "Сохранение...";
+            btn.disabled = true; btn.innerText = "Сохранение...";
             try {
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'events', id);
                 const updateData = { 
@@ -1238,11 +1253,9 @@
                 await updateDoc(docRef, updateData);
                 closeAllModals();
             } catch (e) { console.error(e); } finally {
-                btn.disabled = false;
-                btn.innerText = "Сохранить";
+                btn.disabled = false; btn.innerText = "Сохранить";
             }
         }
-
         document.getElementById('saveEditBtn').onclick = saveEdit;
 
         document.querySelectorAll('.date-mask').forEach(input => {
@@ -1259,13 +1272,6 @@
                 }
                 e.target.value = formattedValue;
             });
-            input.addEventListener('blur', (e) => {
-                const val = e.target.value;
-                if (val.length === 5 && val.includes('.')) {
-                    const currentYear = new Date().getFullYear();
-                    e.target.value = val + '.' + currentYear;
-                }
-            });
         });
 
         function buildCalendar(m, y) {
@@ -1275,23 +1281,19 @@
             const realYear = realNow.getFullYear();
             const monthsGenitive = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
             const monthsNominative = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-
             const isCurrentMonth = (m === realMonth && y === realYear);
             dateTitle.innerText = isCurrentMonth ? `${realToday} ${monthsGenitive[m]}` : `${monthsNominative[m]} ${y !== realYear ? y : ''}`;
-
             calGrid.innerHTML = '';
             ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].forEach(d => {
                 const el = document.createElement('div');
                 el.className = 'day-name'; el.innerText = d; calGrid.appendChild(el);
             });
-
             const firstDay = new Date(y, m, 1).getDay();
             const offset = firstDay === 0 ? 6 : firstDay - 1;
             for (let i = 0; i < offset; i++) {
                 const empty = document.createElement('div'); empty.style.aspectRatio = "1/1";
                 calGrid.appendChild(empty);
             }
-
             const daysInMonth = new Date(y, m + 1, 0).getDate();
             const eventDates = new Set();
             globalEvents.forEach(ev => {
@@ -1302,10 +1304,8 @@
                     if (mVal === m && yVal === y) eventDates.add(dVal);
                 }
             });
-
             for (let d = 1; d <= daysInMonth; d++) {
-                const el = document.createElement('div');
-                el.className = 'day';
+                const el = document.createElement('div'); el.className = 'day';
                 if (isCurrentMonth && d === realToday) el.classList.add('today');
                 if (eventDates.has(d)) el.classList.add('has-event');
                 el.innerText = d;
@@ -1387,8 +1387,6 @@
             document.querySelectorAll('.form-input').forEach(i => i.value = '');
             const hallSelect = document.getElementById('banketHallSelect');
             if(hallSelect) hallSelect.selectedIndex = 0;
-            const infoTitle = document.getElementById('infoModalTitle');
-            if(infoTitle) infoTitle.innerText = "Информация";
             isChatOpen = false;
         };
 
